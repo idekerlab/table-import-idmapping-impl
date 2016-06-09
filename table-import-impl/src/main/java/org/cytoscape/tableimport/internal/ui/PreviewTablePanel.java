@@ -900,21 +900,21 @@ public class PreviewTablePanel extends JPanel {
 			public void propertyChange(PropertyChangeEvent evt) {
 				//setListDelimiter(colIdx, (String)evt.getNewValue());
 				updatePreviewTable();
-				System.out.println("+"+attrEditorPanel.getIdmapLabelSource());
+				System.out.println("+"+attrEditorPanel.getIdmapSource());
 			}
 		});
 		attrEditorPanel.addPropertyChangeListener("IdmapLabelTarget", new PropertyChangeListener() {
 			@Override
 			public void propertyChange(PropertyChangeEvent evt) {
 				//setListDelimiter(colIdx, (String)evt.getNewValue());
-				System.out.println("+"+attrEditorPanel.getIdmapLabelTarget());
+				System.out.println("+"+attrEditorPanel.getIdmapTarget());
 			}
 		});
 		attrEditorPanel.addPropertyChangeListener("IdmapLabelSpeices", new PropertyChangeListener() {
 			@Override
 			public void propertyChange(PropertyChangeEvent evt) {
 				//setListDelimiter(colIdx, (String)evt.getNewValue());
-				System.out.println("+"+attrEditorPanel.getIdmapLabelSpecies());
+				System.out.println("+"+attrEditorPanel.getIdmapSpecies());
 			}
 		});
 		

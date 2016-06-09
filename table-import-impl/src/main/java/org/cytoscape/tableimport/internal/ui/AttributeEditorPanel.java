@@ -63,21 +63,29 @@ import org.cytoscape.tableimport.internal.util.TypeUtil;
 import org.cytoscape.util.swing.IconManager;
 import org.cytoscape.util.swing.LookAndFeelUtil;
 
-// TODO Id mapper need to be packaged better!
-// Id mapper is here: https://github.com/cytoscape/idmap-impl
+
+/*
+ * TODO Id mapper need to be packaged better!
+ * 
+ * Id mapper is here: https://github.com/cytoscape/idmap-impl 
+ */
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapper;
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapping;
 import org.cytoscape.tableimport.internal.ui.idmap.KOIdMapper;
+import org.cytoscape.tableimport.internal.ui.idmap.BridgeDbIdMapper;
 
 @SuppressWarnings("serial")
 public class AttributeEditorPanel extends JPanel {
 
+	/*
+	 * private final IdMapper id_mapper = new BridgeDbIdMapper(); 
+	 */
+	private final IdMapper id_mapper = new KOIdMapper(); // could also be a BridgeDbIdMapper()
+
+
 	private static final String OTHER = "Other:";
-
 	private static final float ICON_FONT_SIZE = 14.0f;
-
 	private JTextField attributeNameTextField;
-
 	private final Map<SourceColumnSemantic, JToggleButton> typeButtons = new LinkedHashMap<>();
 	private final Map<AttributeDataType, JToggleButton> dataTypeButtons = new LinkedHashMap<>();
 
@@ -96,15 +104,17 @@ public class AttributeEditorPanel extends JPanel {
 	private JComboBox<String> listDelimiterComboBox;
 	private JTextField otherTextField;
 
+	/*
+	 * Items for id mapping:
+	 */
 	private JLabel idmapLabelSource;
 	private JLabel idmapLabelTarget;
 	private JLabel idmapLabelSpecies;
-
-	private JComboBox<String> idmapLabelSourceComboBox;
-	private JComboBox<String> idmapLabelTargetComboBox;
-	private JComboBox<String> idmapLabelSpeciesComboBox;
-
+	private JComboBox<String> idmapSourceComboBox;
+	private JComboBox<String> idmapTargetComboBox;
+	private JComboBox<String> idmapSpeciesComboBox;
 	private JCheckBox idmapForceSingle;
+	
 
 	private ButtonGroup typeButtonGroup;
 	private ButtonGroup dataTypeButtonGroup;
@@ -144,72 +154,334 @@ public class AttributeEditorPanel extends JPanel {
 		updateComponents();
 	}
 
-	public Object getIdmapLabelSource() {
-		return idmapLabelSourceComboBox.getSelectedItem();
-	}
-
-	public Object getIdmapLabelTarget() {
-		return idmapLabelTargetComboBox.getSelectedItem();
-	}
-
-	public Object getIdmapLabelSpecies() {
-		return idmapLabelSpeciesComboBox.getSelectedItem();
-	}
-
-	public String getAttributeName() {
-		return getAttributeNameTextField().getText().trim();
-	}
-
-	public SourceColumnSemantic getAttributeType() {
-		final ButtonModel model = typeButtonGroup.getSelection();
-
-		for (Entry<SourceColumnSemantic, JToggleButton> entry : typeButtons
-				.entrySet()) {
-			final JToggleButton btn = entry.getValue();
-
-			if (btn.getModel().equals(model))
-				return entry.getKey();
+	/**
+	 * This is the principal method for id mapping.
+	 * TODO it still has problems with creating a new preview column!
+	 * 
+	 * 
+	 * @param column
+	 * @param id_mapper
+	 */
+	private void mapID(final int column, final IdMapper id_mapper) {
+		if (orig_values_list.isEmpty()) {
+			orig_values_list.add(null);
+			orig_values_list.add(null);
 		}
 
-		return NONE;
-	}
-
-	public AttributeDataType getAttributeDataType() {
-		final ButtonModel model = dataTypeButtonGroup.getSelection();
-
-		for (Entry<AttributeDataType, JToggleButton> entry : dataTypeButtons
-				.entrySet()) {
-			final JToggleButton btn = entry.getValue();
-
-			if (btn.getModel().equals(model))
-				return entry.getKey();
+		if (orig_values_list.get(column) == null) {
+			orig_values_list.set(column, new ArrayList<String>());
+			for (int row = 0; row < previewTable.getRowCount(); ++row) {
+				String array_element = (String) previewTable.getValueAt(row,
+						column);
+				orig_values_list.get(column).add(array_element);
+			}
 		}
 
-		return TYPE_STRING;
+		final String target_type = (String) getIdmapTarget();
+		final String source_type = (String) getIdmapSource();
+		final String species = (String) getIdmapSpecies();
+
+		Map<String, IdMapping> res = id_mapper.map(
+				orig_values_list.get(column), source_type, target_type,
+				species, species);
+
+		for (int row = 0; row < previewTable.getRowCount(); ++row) {
+			System.out.print(row + " :");
+			System.out.println((String) previewTable.getValueAt(row, column));
+		}
+
+		if (res != null && !res.isEmpty()) {
+			final int orig_col_count = previewTable.getColumnCount();
+			System.out.println("orig col count " + orig_col_count);
+			final int orig_row_count = previewTable.getRowCount();
+			System.out.println("orig row count " + orig_row_count);
+
+			final String[] new_column = new String[orig_row_count + 0];
+			for (int row = 0; row < orig_row_count; ++row) {
+				
+				IdMapping r = res.get(previewTable.getValueAt(row, column));
+				if (r != null) {
+					if (r.getTargetIds() != null && !r.getTargetIds().isEmpty()) {
+						new_column[row] = r.getTargetIds().iterator().next();
+						// previewTable.setValueAt(r.first(), row,
+						// orig_col_count);
+					}
+					else {
+						new_column[row] = "_";
+						// previewTable.setValueAt(
+						// orig_values_list.get(column).get(row), row, column);
+					}
+				}
+				else {
+					new_column[row] = "_";
+				}	
+
+			}
+
+			// TableColumn c = new TableColumn();
+
+			// c.setHeaderValue("a");
+			// System.out.println(previewTable.getModel());
+			PreviewTableModel model = (PreviewTableModel) previewTable
+					.getModel();
+
+			// model.setColumnCount(orig_col_count + 1);
+
+			System.out
+					.println("orig model col count " + model.getColumnCount());
+			System.out.println("orig model row count " + model.getRowCount());
+
+			model.addColumn("mapped", new_column);
+
+			TableColumn c = new TableColumn();
+
+			c.setHeaderValue("a");
+
+			previewTable.addColumn(c);
+			// model.addColumn("b", news);
+
+			System.out.println("new model col count " + model.getColumnCount());
+			System.out.println("new model row count " + model.getRowCount());
+
+			// previewTable.addColumn(c);
+			final int new_col_count = previewTable.getColumnCount();
+			System.out.println("new col count " + new_col_count);
+			final int new_row_count = previewTable.getRowCount();
+			System.out.println("new row count " + new_row_count);
+
+		}
+
 	}
 
-	public String getListDelimiter() {
-		if (isOtherDelimiterSelected())
-			return getOtherTextField().getText();
-
-		final String label = getListDelimiterComboBox().getSelectedItem()
-				.toString();
-		final TextDelimiter del = TextDelimiter.getByLabel(label);
-
-		return del != null ? del.getDelimiter() : null;
+	
+	/**
+	 * This returns the id mapper source type (e.g. UniProt) 
+	 * 
+	 * @return
+	 */
+	public Object getIdmapSource() {
+		return idmapSourceComboBox.getSelectedItem();
 	}
+
+	/**
+	 * This returns the id mapper target type (e.g. Ensembl) 
+	 * 
+	 * @return
+	 */
+	public Object getIdmapTarget() {
+		return idmapTargetComboBox.getSelectedItem();
+	}
+
+	/**
+	 *  This returns the id mapper species  
+	 * 
+	 * @return
+	 */
+	public Object getIdmapSpecies() {
+		return idmapSpeciesComboBox.getSelectedItem();
+	}
+
+	
+
+	/**
+	 * This creates a combo box for the id mapping source type.
+	 * 
+	 * 
+	 * @return 
+	 */
+	private JComboBox<String> getIdmapSourceComboBox() {
+
+		if (idmapSourceComboBox == null) {
+			idmapSourceComboBox = new JComboBox<>();
+			idmapSourceComboBox.putClientProperty(
+					"JComponent.sizeVariant", "small");
+			idmapSourceComboBox.setModel(new DefaultComboBoxModel<String>(
+					new String[] { KOIdMapper.SYMBOL, KOIdMapper.GENE_ID,
+							KOIdMapper.ENSEMBL, KOIdMapper.UniProtKB_AC,
+							KOIdMapper.UniProtKB_ID }));
+
+			final ListCellRenderer<? super String> renderer = idmapSourceComboBox
+					.getRenderer();
+
+			idmapSourceComboBox
+					.setRenderer(new ListCellRenderer<String>() {
+						@Override
+						public Component getListCellRendererComponent(
+								JList<? extends String> list, String value,
+								int index, boolean isSelected,
+								boolean cellHasFocus) {
+							final Component c = renderer
+									.getListCellRendererComponent(list, value,
+											index, isSelected, cellHasFocus);
+
+							if (OTHER.equals(value) && c instanceof JComponent)
+								((JComponent) c).setFont(((JComponent) c)
+										.getFont().deriveFont(Font.ITALIC));
+
+							return c;
+						}
+					});
+
+			idmapSourceComboBox.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					firePropertyChange("IdmapLabelSource", listDelimiter,
+							listDelimiter = getListDelimiter());
+					
+					/*
+					 * Calling the mapping function 
+					 */
+					mapID(colIdx, id_mapper);
+
+				}
+
+			});
+		}
+
+		return idmapSourceComboBox;
+	}
+
+	/**
+	 * This creates a combo box for the id mapping target type.
+	 * 
+	 * 
+	 * @return 
+	 */
+	private JComboBox<String> getIdmapTargetComboBox() {
+		if (idmapTargetComboBox == null) {
+			idmapTargetComboBox = new JComboBox<>();
+			idmapTargetComboBox.putClientProperty(
+					"JComponent.sizeVariant", "small");
+			idmapTargetComboBox
+					.setModel(new DefaultComboBoxModel<String>(
+							new String[] { KOIdMapper.SYMBOL,
+									KOIdMapper.GENE_ID, KOIdMapper.ENSEMBL,
+									KOIdMapper.SYNONYMS,
+									KOIdMapper.UniProtKB_AC,
+									KOIdMapper.UniProtKB_ID, KOIdMapper.RefSeq,
+									KOIdMapper.GI, KOIdMapper.PDB,
+									KOIdMapper.GO, KOIdMapper.UniRef100,
+									KOIdMapper.UniRef90, KOIdMapper.UniRef50,
+									KOIdMapper.UniParc, KOIdMapper.PIR,
+									KOIdMapper.EMBL }));
+
+			final ListCellRenderer<? super String> renderer = idmapTargetComboBox
+					.getRenderer();
+
+			idmapTargetComboBox
+					.setRenderer(new ListCellRenderer<String>() {
+						@Override
+						public Component getListCellRendererComponent(
+								JList<? extends String> list, String value,
+								int index, boolean isSelected,
+								boolean cellHasFocus) {
+							final Component c = renderer
+									.getListCellRendererComponent(list, value,
+											index, isSelected, cellHasFocus);
+
+							if (OTHER.equals(value) && c instanceof JComponent)
+								((JComponent) c).setFont(((JComponent) c)
+										.getFont().deriveFont(Font.ITALIC));
+
+							return c;
+						}
+					});
+
+			idmapTargetComboBox.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+
+					firePropertyChange("IdmapLabelTarget", listDelimiter,
+							listDelimiter = getListDelimiter());
+					
+					/*
+					 * Calling the mapping function 
+					 */
+					mapID(colIdx, id_mapper);
+					
+				}
+			});
+		}
+
+		return idmapTargetComboBox;
+	}
+
+	/**
+	 * This creates a combo box for the id mapping species.
+	 * 
+	 * 
+	 * @return 
+	 */
+	private JComboBox<String> getIdmapSpeciesComboBox() {
+		if (idmapSpeciesComboBox == null) {
+			idmapSpeciesComboBox = new JComboBox<>();
+			idmapSpeciesComboBox.putClientProperty(
+					"JComponent.sizeVariant", "small");
+			idmapSpeciesComboBox
+					.setModel(new DefaultComboBoxModel<String>(new String[] {
+							KOIdMapper.HUMAN, KOIdMapper.MOUSE, KOIdMapper.FLY,
+							KOIdMapper.YEAST }));
+
+			final ListCellRenderer<? super String> renderer = idmapSpeciesComboBox
+					.getRenderer();
+
+			idmapSpeciesComboBox
+					.setRenderer(new ListCellRenderer<String>() {
+						@Override
+						public Component getListCellRendererComponent(
+								JList<? extends String> list, String value,
+								int index, boolean isSelected,
+								boolean cellHasFocus) {
+							final Component c = renderer
+									.getListCellRendererComponent(list, value,
+											index, isSelected, cellHasFocus);
+
+							if (OTHER.equals(value) && c instanceof JComponent)
+								((JComponent) c).setFont(((JComponent) c)
+										.getFont().deriveFont(Font.ITALIC));
+
+							return c;
+						}
+					});
+
+			idmapSpeciesComboBox.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+
+					firePropertyChange("IdmapLabelSpecies", listDelimiter,
+							listDelimiter = getListDelimiter());
+			
+					/*
+					 * Calling the mapping function 
+					 */
+					mapID(colIdx, id_mapper);
+
+				}
+			});
+		}
+
+		return idmapSpeciesComboBox;
+	}
+
+	
 
 	private void initComponents() {
 		listDelimiterLabel = new JLabel("List Delimiter:");
 		listDelimiterLabel.putClientProperty("JComponent.sizeVariant", "small");
-		idmapTitle = new JLabel("Id Mapping:");
+		
+		/*
+		 * Id mapping related items:
+		 */
+		idmapTitle = new JLabel("Id Mapping:"); 
 		idmapForceSingle = new JCheckBox("Force single");
-		idmapLabelSource = new JLabel("Source:"); // CZ
+		idmapLabelSource = new JLabel("Source:"); 
 		idmapLabelTarget = new JLabel("Target:");
 		idmapLabelSpecies = new JLabel("Species:");
 		idmapLabelSource.putClientProperty("JComponent.sizeVariant", "small");
 		idmapLabelTarget.putClientProperty("JComponent.sizeVariant", "small");
 		idmapLabelSpecies.putClientProperty("JComponent.sizeVariant", "small");
+		
 
 		typeButtonGroup = new ButtonGroup();
 		dataTypeButtonGroup = new ButtonGroup();
@@ -311,7 +583,7 @@ public class AttributeEditorPanel extends JPanel {
 						layout.createSequentialGroup()
 								.addComponent(idmapLabelSource)
 								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(getIdmapLabelSourceComboBox(),
+								.addComponent(getIdmapSourceComboBox(),
 										PREFERRED_SIZE, DEFAULT_SIZE,
 										PREFERRED_SIZE)
 								.addComponent(getOtherTextField(), 12, 36,
@@ -320,7 +592,7 @@ public class AttributeEditorPanel extends JPanel {
 						layout.createSequentialGroup()
 								.addComponent(idmapLabelTarget)
 								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(getIdmapLabelTargetComboBox(),
+								.addComponent(getIdmapTargetComboBox(),
 										PREFERRED_SIZE, DEFAULT_SIZE,
 										PREFERRED_SIZE)
 								.addComponent(getOtherTextField(), 12, 36,
@@ -329,7 +601,7 @@ public class AttributeEditorPanel extends JPanel {
 						layout.createSequentialGroup()
 								.addComponent(idmapLabelSpecies)
 								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(getIdmapLabelSpeciesComboBox(),
+								.addComponent(getIdmapSpeciesComboBox(),
 										PREFERRED_SIZE, DEFAULT_SIZE,
 										PREFERRED_SIZE)
 								.addComponent(getOtherTextField(), 12, 36,
@@ -399,7 +671,7 @@ public class AttributeEditorPanel extends JPanel {
 										layout.createParallelGroup(CENTER)
 												.addComponent(idmapLabelSource)
 												.addComponent(
-														getIdmapLabelSourceComboBox(),
+														getIdmapSourceComboBox(),
 														PREFERRED_SIZE,
 														DEFAULT_SIZE,
 														PREFERRED_SIZE)
@@ -415,7 +687,7 @@ public class AttributeEditorPanel extends JPanel {
 										layout.createParallelGroup(CENTER)
 												.addComponent(idmapLabelTarget)
 												.addComponent(
-														getIdmapLabelTargetComboBox(),
+														getIdmapTargetComboBox(),
 														PREFERRED_SIZE,
 														DEFAULT_SIZE,
 														PREFERRED_SIZE)
@@ -431,7 +703,7 @@ public class AttributeEditorPanel extends JPanel {
 										layout.createParallelGroup(CENTER)
 												.addComponent(idmapLabelSpecies)
 												.addComponent(
-														getIdmapLabelSpeciesComboBox(),
+														getIdmapSpeciesComboBox(),
 														PREFERRED_SIZE,
 														DEFAULT_SIZE,
 														PREFERRED_SIZE)
@@ -532,254 +804,49 @@ public class AttributeEditorPanel extends JPanel {
 
 		return listDelimiterComboBox;
 	}
+	
 
-	private JComboBox<String> getIdmapLabelSourceComboBox() {
-
-		if (idmapLabelSourceComboBox == null) {
-			idmapLabelSourceComboBox = new JComboBox<>();
-			idmapLabelSourceComboBox.putClientProperty(
-					"JComponent.sizeVariant", "small");
-			idmapLabelSourceComboBox.setModel(new DefaultComboBoxModel<String>(
-					new String[] { KOIdMapper.SYMBOL, KOIdMapper.GENE_ID,
-							KOIdMapper.ENSEMBL, KOIdMapper.UniProtKB_AC,
-							KOIdMapper.UniProtKB_ID }));
-
-			final ListCellRenderer<? super String> renderer = idmapLabelSourceComboBox
-					.getRenderer();
-
-			idmapLabelSourceComboBox
-					.setRenderer(new ListCellRenderer<String>() {
-						@Override
-						public Component getListCellRendererComponent(
-								JList<? extends String> list, String value,
-								int index, boolean isSelected,
-								boolean cellHasFocus) {
-							final Component c = renderer
-									.getListCellRendererComponent(list, value,
-											index, isSelected, cellHasFocus);
-
-							if (OTHER.equals(value) && c instanceof JComponent)
-								((JComponent) c).setFont(((JComponent) c)
-										.getFont().deriveFont(Font.ITALIC));
-
-							return c;
-						}
-					});
-
-			idmapLabelSourceComboBox.addActionListener(new ActionListener() {
-
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					firePropertyChange("IdmapLabelSource", listDelimiter,
-							listDelimiter = getListDelimiter());
-					System.out.println(getIdmapLabelSource());
-					IdMapper id_mapper = new KOIdMapper();
-					mapID(colIdx, id_mapper);
-
-				}
-
-			});
-		}
-
-		return idmapLabelSourceComboBox;
+	public String getAttributeName() {
+		return getAttributeNameTextField().getText().trim();
 	}
 
-	private void mapID(final int column, final IdMapper id_mapper) {
-		if (orig_values_list.isEmpty()) {
-			orig_values_list.add(null);
-			orig_values_list.add(null);
+	public SourceColumnSemantic getAttributeType() {
+		final ButtonModel model = typeButtonGroup.getSelection();
+
+		for (Entry<SourceColumnSemantic, JToggleButton> entry : typeButtons
+				.entrySet()) {
+			final JToggleButton btn = entry.getValue();
+
+			if (btn.getModel().equals(model))
+				return entry.getKey();
 		}
 
-		if (orig_values_list.get(column) == null) {
-			orig_values_list.set(column, new ArrayList<String>());
-			for (int row = 0; row < previewTable.getRowCount(); ++row) {
-				String array_element = (String) previewTable.getValueAt(row,
-						column);
-				orig_values_list.get(column).add(array_element);
-			}
-		}
-
-		final String target_type = (String) getIdmapLabelTarget();
-		final String source_type = (String) getIdmapLabelSource();
-		final String species = (String) getIdmapLabelSpecies();
-
-		Map<String, IdMapping> res = id_mapper.map(
-				orig_values_list.get(column), source_type, target_type,
-				species, species);
-
-		for (int row = 0; row < previewTable.getRowCount(); ++row) {
-			System.out.print(row + " :");
-			System.out.println((String) previewTable.getValueAt(row, column));
-		}
-
-		if (res != null && !res.isEmpty()) {
-			final int orig_col_count = previewTable.getColumnCount();
-			System.out.println("orig col count " + orig_col_count);
-			final int orig_row_count = previewTable.getRowCount();
-			System.out.println("orig row count " + orig_row_count);
-
-			final String[] new_column = new String[orig_row_count + 0];
-			for (int row = 0; row < orig_row_count; ++row) {
-				
-				IdMapping r = res.get(previewTable.getValueAt(row, column));
-				if (r != null) {
-					if (r.getTargetIds() != null && !r.getTargetIds().isEmpty()) {
-						new_column[row] = r.getTargetIds().iterator().next();
-						// previewTable.setValueAt(r.first(), row,
-						// orig_col_count);
-					}
-					else {
-						new_column[row] = "_";
-						// previewTable.setValueAt(
-						// orig_values_list.get(column).get(row), row, column);
-					}
-				}
-				else {
-					new_column[row] = "_";
-				}	
-
-			}
-
-			// TableColumn c = new TableColumn();
-
-			// c.setHeaderValue("a");
-			// System.out.println(previewTable.getModel());
-			PreviewTableModel model = (PreviewTableModel) previewTable
-					.getModel();
-
-			// model.setColumnCount(orig_col_count + 1);
-
-			System.out
-					.println("orig model col count " + model.getColumnCount());
-			System.out.println("orig model row count " + model.getRowCount());
-
-			model.addColumn("mapped", new_column);
-
-			TableColumn c = new TableColumn();
-
-			c.setHeaderValue("a");
-
-			previewTable.addColumn(c);
-			// model.addColumn("b", news);
-
-			System.out.println("new model col count " + model.getColumnCount());
-			System.out.println("new model row count " + model.getRowCount());
-
-			// previewTable.addColumn(c);
-			final int new_col_count = previewTable.getColumnCount();
-			System.out.println("new col count " + new_col_count);
-			final int new_row_count = previewTable.getRowCount();
-			System.out.println("new row count " + new_row_count);
-
-		}
-
+		return NONE;
 	}
 
-	private JComboBox<String> getIdmapLabelTargetComboBox() {
-		if (idmapLabelTargetComboBox == null) {
-			idmapLabelTargetComboBox = new JComboBox<>();
-			idmapLabelTargetComboBox.putClientProperty(
-					"JComponent.sizeVariant", "small");
-			idmapLabelTargetComboBox
-					.setModel(new DefaultComboBoxModel<String>(
-							new String[] { KOIdMapper.SYMBOL,
-									KOIdMapper.GENE_ID, KOIdMapper.ENSEMBL,
-									KOIdMapper.SYNONYMS,
-									KOIdMapper.UniProtKB_AC,
-									KOIdMapper.UniProtKB_ID, KOIdMapper.RefSeq,
-									KOIdMapper.GI, KOIdMapper.PDB,
-									KOIdMapper.GO, KOIdMapper.UniRef100,
-									KOIdMapper.UniRef90, KOIdMapper.UniRef50,
-									KOIdMapper.UniParc, KOIdMapper.PIR,
-									KOIdMapper.EMBL }));
+	public AttributeDataType getAttributeDataType() {
+		final ButtonModel model = dataTypeButtonGroup.getSelection();
 
-			final ListCellRenderer<? super String> renderer = idmapLabelTargetComboBox
-					.getRenderer();
+		for (Entry<AttributeDataType, JToggleButton> entry : dataTypeButtons
+				.entrySet()) {
+			final JToggleButton btn = entry.getValue();
 
-			idmapLabelTargetComboBox
-					.setRenderer(new ListCellRenderer<String>() {
-						@Override
-						public Component getListCellRendererComponent(
-								JList<? extends String> list, String value,
-								int index, boolean isSelected,
-								boolean cellHasFocus) {
-							final Component c = renderer
-									.getListCellRendererComponent(list, value,
-											index, isSelected, cellHasFocus);
-
-							if (OTHER.equals(value) && c instanceof JComponent)
-								((JComponent) c).setFont(((JComponent) c)
-										.getFont().deriveFont(Font.ITALIC));
-
-							return c;
-						}
-					});
-
-			idmapLabelTargetComboBox.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-
-					firePropertyChange("IdmapLabelTarget", listDelimiter,
-							listDelimiter = getListDelimiter());
-					System.out.println(getIdmapLabelTarget());
-					IdMapper id_mapper = new KOIdMapper();
-					mapID(colIdx, id_mapper);
-					;
-				}
-			});
+			if (btn.getModel().equals(model))
+				return entry.getKey();
 		}
 
-		return idmapLabelTargetComboBox;
+		return TYPE_STRING;
 	}
 
-	private JComboBox<String> getIdmapLabelSpeciesComboBox() {
-		if (idmapLabelSpeciesComboBox == null) {
-			idmapLabelSpeciesComboBox = new JComboBox<>();
-			idmapLabelSpeciesComboBox.putClientProperty(
-					"JComponent.sizeVariant", "small");
-			idmapLabelSpeciesComboBox
-					.setModel(new DefaultComboBoxModel<String>(new String[] {
-							KOIdMapper.HUMAN, KOIdMapper.MOUSE, KOIdMapper.FLY,
-							KOIdMapper.YEAST }));
+	public String getListDelimiter() {
+		if (isOtherDelimiterSelected())
+			return getOtherTextField().getText();
 
-			final ListCellRenderer<? super String> renderer = idmapLabelSpeciesComboBox
-					.getRenderer();
+		final String label = getListDelimiterComboBox().getSelectedItem()
+				.toString();
+		final TextDelimiter del = TextDelimiter.getByLabel(label);
 
-			idmapLabelSpeciesComboBox
-					.setRenderer(new ListCellRenderer<String>() {
-						@Override
-						public Component getListCellRendererComponent(
-								JList<? extends String> list, String value,
-								int index, boolean isSelected,
-								boolean cellHasFocus) {
-							final Component c = renderer
-									.getListCellRendererComponent(list, value,
-											index, isSelected, cellHasFocus);
-
-							if (OTHER.equals(value) && c instanceof JComponent)
-								((JComponent) c).setFont(((JComponent) c)
-										.getFont().deriveFont(Font.ITALIC));
-
-							return c;
-						}
-					});
-
-			idmapLabelSpeciesComboBox.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-
-					firePropertyChange("IdmapLabelSpecies", listDelimiter,
-							listDelimiter = getListDelimiter());
-
-					System.out.println(getIdmapLabelSpecies());
-					IdMapper id_mapper = new KOIdMapper();
-					mapID(colIdx, id_mapper);
-
-				}
-			});
-		}
-
-		return idmapLabelSpeciesComboBox;
+		return del != null ? del.getDelimiter() : null;
 	}
 
 	private JTextField getOtherTextField() {
@@ -980,5 +1047,5 @@ public class AttributeEditorPanel extends JPanel {
 		this.colIdx = colIdx;
 
 	}
-
+	
 }
