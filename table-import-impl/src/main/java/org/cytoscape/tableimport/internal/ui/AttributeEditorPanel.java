@@ -63,7 +63,6 @@ import org.cytoscape.tableimport.internal.util.TypeUtil;
 import org.cytoscape.util.swing.IconManager;
 import org.cytoscape.util.swing.LookAndFeelUtil;
 
-
 // TODO Id mapper need to be packaged better!
 // Id mapper is here: https://github.com/cytoscape/idmap-impl
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapper;
@@ -77,7 +76,6 @@ public class AttributeEditorPanel extends JPanel {
 
 	private static final float ICON_FONT_SIZE = 14.0f;
 
-	
 	private JTextField attributeNameTextField;
 
 	private final Map<SourceColumnSemantic, JToggleButton> typeButtons = new LinkedHashMap<>();
@@ -92,7 +90,7 @@ public class AttributeEditorPanel extends JPanel {
 	private JToggleButton booleanListButton;
 	private JToggleButton floatingPointListButton;
 	private JToggleButton integerListButton;
-	private JToggleButton longListButton; 
+	private JToggleButton longListButton;
 
 	private JLabel listDelimiterLabel;
 	private JComboBox<String> listDelimiterComboBox;
@@ -536,12 +534,14 @@ public class AttributeEditorPanel extends JPanel {
 	}
 
 	private JComboBox<String> getIdmapLabelSourceComboBox() {
+
 		if (idmapLabelSourceComboBox == null) {
 			idmapLabelSourceComboBox = new JComboBox<>();
 			idmapLabelSourceComboBox.putClientProperty(
 					"JComponent.sizeVariant", "small");
 			idmapLabelSourceComboBox.setModel(new DefaultComboBoxModel<String>(
-					new String[] { KOIdMapper.SYMBOL, KOIdMapper.GENE_ID, KOIdMapper.ENSEMBL, KOIdMapper.UniProtKB_AC,
+					new String[] { KOIdMapper.SYMBOL, KOIdMapper.GENE_ID,
+							KOIdMapper.ENSEMBL, KOIdMapper.UniProtKB_AC,
 							KOIdMapper.UniProtKB_ID }));
 
 			final ListCellRenderer<? super String> renderer = idmapLabelSourceComboBox
@@ -574,7 +574,7 @@ public class AttributeEditorPanel extends JPanel {
 							listDelimiter = getListDelimiter());
 					System.out.println(getIdmapLabelSource());
 					IdMapper id_mapper = new KOIdMapper();
-					mapID(colIdx,id_mapper);
+					mapID(colIdx, id_mapper);
 
 				}
 
@@ -602,17 +602,10 @@ public class AttributeEditorPanel extends JPanel {
 		final String target_type = (String) getIdmapLabelTarget();
 		final String source_type = (String) getIdmapLabelSource();
 		final String species = (String) getIdmapLabelSpecies();
-		
-		
-		Map<String, IdMapping> res = id_mapper.map(orig_values_list.get(column),
-                  source_type,
-               target_type,
-               species,
-                species);
-		
-		
-		//SortedMap<String, SortedSet<String>> res = run(orig_values_list
-		//		.get(column));
+
+		Map<String, IdMapping> res = id_mapper.map(
+				orig_values_list.get(column), source_type, target_type,
+				species, species);
 
 		for (int row = 0; row < previewTable.getRowCount(); ++row) {
 			System.out.print(row + " :");
@@ -624,23 +617,26 @@ public class AttributeEditorPanel extends JPanel {
 			System.out.println("orig col count " + orig_col_count);
 			final int orig_row_count = previewTable.getRowCount();
 			System.out.println("orig row count " + orig_row_count);
-			
 
 			final String[] new_column = new String[orig_row_count + 0];
 			for (int row = 0; row < orig_row_count; ++row) {
-				// SortedSet<String> r =
-				// res.get(orig_values_list.get(column).get(
-				// row));
-				IdMapping r = res.get(previewTable.getValueAt(row,
-						column));
-				if (r.getTargetIds() != null && !r.getTargetIds().isEmpty()) {
-					new_column[row] = r.getTargetIds().iterator().next();
-					// previewTable.setValueAt(r.first(), row, orig_col_count);
-				} else {
-					new_column[row] = "_";
-					// previewTable.setValueAt(
-					// orig_values_list.get(column).get(row), row, column);
+				
+				IdMapping r = res.get(previewTable.getValueAt(row, column));
+				if (r != null) {
+					if (r.getTargetIds() != null && !r.getTargetIds().isEmpty()) {
+						new_column[row] = r.getTargetIds().iterator().next();
+						// previewTable.setValueAt(r.first(), row,
+						// orig_col_count);
+					}
+					else {
+						new_column[row] = "_";
+						// previewTable.setValueAt(
+						// orig_values_list.get(column).get(row), row, column);
+					}
 				}
+				else {
+					new_column[row] = "_";
+				}	
 
 			}
 
@@ -650,27 +646,24 @@ public class AttributeEditorPanel extends JPanel {
 			// System.out.println(previewTable.getModel());
 			PreviewTableModel model = (PreviewTableModel) previewTable
 					.getModel();
-			
+
 			// model.setColumnCount(orig_col_count + 1);
 
-			System.out.println("orig model col count " + model.getColumnCount());
+			System.out
+					.println("orig model col count " + model.getColumnCount());
 			System.out.println("orig model row count " + model.getRowCount());
 
-			
 			model.addColumn("mapped", new_column);
-			
-			
+
 			TableColumn c = new TableColumn();
 
 			c.setHeaderValue("a");
-			
+
 			previewTable.addColumn(c);
 			// model.addColumn("b", news);
-			
-			
+
 			System.out.println("new model col count " + model.getColumnCount());
 			System.out.println("new model row count " + model.getRowCount());
-
 
 			// previewTable.addColumn(c);
 			final int new_col_count = previewTable.getColumnCount();
@@ -682,61 +675,23 @@ public class AttributeEditorPanel extends JPanel {
 
 	}
 
-//	private void mapID_old(final int column) {
-//		if (orig_values_list.isEmpty()) {
-//			orig_values_list.add(null);
-//			orig_values_list.add(null);
-//		}
-//
-//		if (orig_values_list.get(column) == null) {
-//			orig_values_list.set(column, new ArrayList<String>());
-//			for (int row = 0; row < previewTable.getRowCount(); ++row) {
-//				String array_element = (String) previewTable.getValueAt(row,
-//						column);
-//				orig_values_list.get(column).add(array_element);
-//			}
-//		}
-//
-//		SortedMap<String, SortedSet<String>> res = run(orig_values_list
-//				.get(column));
-//
-//		if (res != null && !res.isEmpty()) {
-//			final int orig_col_count = previewTable.getColumnCount();
-//			System.out.println("orig_col_count " + orig_col_count);
-//			TableColumn c = new TableColumn();
-//
-//			c.setHeaderValue("a");
-//
-//			previewTable.getColumnModel().addColumn(c);
-//			System.out.println("new  col count "
-//					+ previewTable.getColumnCount());
-//
-//			previewTable.addColumn(c);
-//			for (int row = 0; row < previewTable.getRowCount(); ++row) {
-//				SortedSet<String> r = res.get(orig_values_list.get(column).get(
-//						row));
-//				if (r != null && !r.isEmpty()) {
-//					previewTable.setValueAt(r.first(), row, orig_col_count);
-//				} else {
-//					previewTable.setValueAt(
-//							orig_values_list.get(column).get(row), row, column);
-//				}
-//
-//			}
-//		}
-//
-//	}
-
 	private JComboBox<String> getIdmapLabelTargetComboBox() {
 		if (idmapLabelTargetComboBox == null) {
 			idmapLabelTargetComboBox = new JComboBox<>();
 			idmapLabelTargetComboBox.putClientProperty(
 					"JComponent.sizeVariant", "small");
 			idmapLabelTargetComboBox
-					.setModel(new DefaultComboBoxModel<String>(new String[] {
-							KOIdMapper.SYMBOL, KOIdMapper.GENE_ID, KOIdMapper.ENSEMBL, KOIdMapper.SYNONYMS, KOIdMapper.UniProtKB_AC,
-							KOIdMapper.UniProtKB_ID, KOIdMapper.RefSeq, KOIdMapper.GI, KOIdMapper.PDB, KOIdMapper.GO, KOIdMapper.UniRef100,
-							KOIdMapper.UniRef90, KOIdMapper.UniRef50, KOIdMapper.UniParc, KOIdMapper.PIR, KOIdMapper.EMBL }));
+					.setModel(new DefaultComboBoxModel<String>(
+							new String[] { KOIdMapper.SYMBOL,
+									KOIdMapper.GENE_ID, KOIdMapper.ENSEMBL,
+									KOIdMapper.SYNONYMS,
+									KOIdMapper.UniProtKB_AC,
+									KOIdMapper.UniProtKB_ID, KOIdMapper.RefSeq,
+									KOIdMapper.GI, KOIdMapper.PDB,
+									KOIdMapper.GO, KOIdMapper.UniRef100,
+									KOIdMapper.UniRef90, KOIdMapper.UniRef50,
+									KOIdMapper.UniParc, KOIdMapper.PIR,
+									KOIdMapper.EMBL }));
 
 			final ListCellRenderer<? super String> renderer = idmapLabelTargetComboBox
 					.getRenderer();
@@ -768,7 +723,7 @@ public class AttributeEditorPanel extends JPanel {
 							listDelimiter = getListDelimiter());
 					System.out.println(getIdmapLabelTarget());
 					IdMapper id_mapper = new KOIdMapper();
-					mapID(colIdx,id_mapper);
+					mapID(colIdx, id_mapper);
 					;
 				}
 			});
@@ -784,7 +739,8 @@ public class AttributeEditorPanel extends JPanel {
 					"JComponent.sizeVariant", "small");
 			idmapLabelSpeciesComboBox
 					.setModel(new DefaultComboBoxModel<String>(new String[] {
-							KOIdMapper.HUMAN, KOIdMapper.MOUSE, KOIdMapper.FLY, KOIdMapper.YEAST }));
+							KOIdMapper.HUMAN, KOIdMapper.MOUSE, KOIdMapper.FLY,
+							KOIdMapper.YEAST }));
 
 			final ListCellRenderer<? super String> renderer = idmapLabelSpeciesComboBox
 					.getRenderer();
@@ -817,8 +773,8 @@ public class AttributeEditorPanel extends JPanel {
 
 					System.out.println(getIdmapLabelSpecies());
 					IdMapper id_mapper = new KOIdMapper();
-					mapID(colIdx,id_mapper);
-					
+					mapID(colIdx, id_mapper);
+
 				}
 			});
 		}
@@ -1019,147 +975,6 @@ public class AttributeEditorPanel extends JPanel {
 
 	}
 
-	// -----------------
-
-	
-
-
-//	public final static String runQuery(final List<String> ids,
-//			final String target_type, final String source_type, final String url)
-//			throws IOException {
-//		final String json_query = makeQuery(ids, target_type);
-//		System.out.println("url=" + url);
-//		System.out.println("json_query=" + json_query);
-//		return post(url, source_type, json_query);
-//	}
-
-//	private final static void addMappedId(
-//			final Map<String, SortedSet<String>> matched_ids, final String in,
-//			final String id) {
-//		if ((id != null) && (id.length() > 0)) {
-//			if (!matched_ids.containsKey(in)) {
-//				matched_ids.put(in, new TreeSet<String>());
-//			}
-//			matched_ids.get(in).add(id);
-//		}
-//	}
-
-
-
-
-
-	// /////
-
-//	public SortedMap<String, SortedSet<String>> run(List<String> values) {
-//		final String target = (String) getIdmapLabelTarget();
-//		final String source = (String) getIdmapLabelSource();
-//		final String species = (String) getIdmapLabelSpecies();
-//
-//		boolean source_is_list = false;
-//		// if (column.getType() == List.class) {
-//		// source_is_list = true;
-//		// }
-//
-//		final List<String> ids = new ArrayList<String>();
-//		for (final Object v : values) {
-//			// System.out.println(v);
-//			if (v != null) {
-//				if (source_is_list) {
-//					for (final Object lv : (List) v) {
-//						addCleanedStrValueToList(ids, lv);
-//					}
-//				} else {
-//					addCleanedStrValueToList(ids, v);
-//				}
-//			}
-//		}
-//		final SortedSet<String> in_types = new TreeSet<String>();
-//		in_types.add(SYNONYMS);
-//		in_types.add(source);
-//
-//		String res = null;
-//		try {
-//			res = runQuery(ids, target, source, DEFAULT_MAP_SERVICE_URL_STR);
-//		} catch (final IOException e) {
-//			e.printStackTrace();
-//			return null;
-//		}
-//
-//		final SortedMap<String, SortedSet<String>> matched_ids = new TreeMap<String, SortedSet<String>>();
-//		final SortedSet<String> unmatched_ids = new TreeSet<String>();
-//
-//		try {
-//			parseResponse(res, in_types, species, target, matched_ids,
-//					unmatched_ids);
-//		} catch (final IOException e) {
-//			e.printStackTrace();
-//		}
-//
-//		System.out.println();
-//		System.out.println("Matched:");
-//		for (final Entry<String, SortedSet<String>> m : matched_ids.entrySet()) {
-//			System.out.println(m.getKey() + "->" + m.getValue());
-//		}
-//		System.out.println();
-//
-//		boolean all_unique = true;
-//		int non_unique = 0;
-//		int unique = 0;
-//		int min = Integer.MAX_VALUE;
-//		int max = 0;
-//		for (final SortedSet<String> v : matched_ids.values()) {
-//			if (v != null) {
-//				if (v.size() > 1) {
-//					all_unique = false;
-//					++non_unique;
-//					if (v.size() > max) {
-//						max = v.size();
-//					}
-//					if (v.size() < min) {
-//						min = v.size();
-//					}
-//				} else {
-//					++unique;
-//				}
-//			}
-//		}
-//
-//		boolean many_to_one = false;
-//
-//		final String msg;
-//
-//		if (matched_ids.size() < 1) {
-//			msg = "Failed to map any identifier" + "\n" + "Total identifiers: "
-//					+ ids.size() + "\n" + "Source type: " + source + "\n"
-//					+ "Target type: " + target;
-//		} else {
-//			final String o2o;
-//
-//			if (all_unique) {
-//				o2o = "All mappings one-to-one" + "\n";
-//			} else {
-//				o2o = "Not all mappings one-to-one:" + "\n" + "  one-to-one: "
-//						+ unique + "\n" + "  one-to-many: " + non_unique
-//						+ " (range: " + min + "-" + max + ")" + "\n";
-//			}
-//
-//			final String m2o;
-//			if (many_to_one) {
-//				m2o = "Same/all mappings many-to-one" + "\n";
-//			} else {
-//				m2o = "";
-//
-//			}
-//
-//			msg = "Successfully mapped identifiers: " + matched_ids.size()
-//					+ "\n" + "Total source identifiers: " + ids.size() + "\n"
-//					+ o2o + m2o + "Source type: " + source + "\n"
-//					+ "Target type: " + target + "\n";
-//		}
-//
-//		return matched_ids;
-//
-//	}
 
 	public void setColIdx(int colIdx) {
 		this.colIdx = colIdx;
