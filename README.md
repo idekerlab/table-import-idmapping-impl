@@ -14,5 +14,5 @@ How to use id mapper for table import:
 * TODO Problems with adding column to preview table persists.
 
  
-* Id mapper is here: https://github.com/cytoscape/idmap-impl 
+* Id mapper for existing tables is here: https://github.com/cytoscape/idmap-impl 
 
