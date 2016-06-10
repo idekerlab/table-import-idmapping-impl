@@ -68,6 +68,10 @@ import org.cytoscape.util.swing.LookAndFeelUtil;
  * TODO Id mapper need to be packaged better!
  * 
  * Id mapper is here: https://github.com/cytoscape/idmap-impl 
+ * 
+ * For now, all the needed classes from https://github.com/cytoscape/idmap-impl
+ * are in org.cytoscape.tableimport.internal.ui.idmap
+ * 
  */
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapper;
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapping;
@@ -114,8 +118,9 @@ public class AttributeEditorPanel extends JPanel {
 	private JComboBox<String> idmapTargetComboBox;
 	private JComboBox<String> idmapSpeciesComboBox;
 	private JCheckBox idmapForceSingle;
+	private ArrayList<ArrayList<String>> orig_values_list = null;
+	private JLabel idmapTitle;
 	
-
 	private ButtonGroup typeButtonGroup;
 	private ButtonGroup dataTypeButtonGroup;
 
@@ -129,9 +134,7 @@ public class AttributeEditorPanel extends JPanel {
 
 	private JTable previewTable;
 
-	private ArrayList<ArrayList<String>> orig_values_list = new ArrayList<ArrayList<String>>();
-
-	private JLabel idmapTitle;
+	
 
 	private int colIdx;
 
@@ -163,17 +166,16 @@ public class AttributeEditorPanel extends JPanel {
 	 * @param id_mapper
 	 */
 	private void mapID(final int column, final IdMapper id_mapper) {
-		if (orig_values_list.isEmpty()) {
-			orig_values_list.add(null);
-			orig_values_list.add(null);
+		if (orig_values_list == null ) {
+			prepareOrginalValiesTable();
 		}
-
-		if (orig_values_list.get(column) == null) {
-			orig_values_list.set(column, new ArrayList<String>());
+		
+	
+		if (orig_values_list.get(column).isEmpty()) {
+			//TODO what about list values?
 			for (int row = 0; row < previewTable.getRowCount(); ++row) {
-				String array_element = (String) previewTable.getValueAt(row,
-						column);
-				orig_values_list.get(column).add(array_element);
+				String str = (String) previewTable.getValueAt(row, column);
+				orig_values_list.get(column).add(str);
 			}
 		}
 
@@ -251,6 +253,13 @@ public class AttributeEditorPanel extends JPanel {
 
 		}
 
+	}
+
+	private void prepareOrginalValiesTable() {
+		orig_values_list = new ArrayList<ArrayList<String>>();
+		for (int col = 0; col < previewTable.getColumnCount(); ++col) {
+		    orig_values_list.add( new ArrayList<String>());
+		}
 	}
 
 	

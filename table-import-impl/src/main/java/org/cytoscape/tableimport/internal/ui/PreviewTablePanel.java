@@ -153,7 +153,7 @@ public class PreviewTablePanel extends JPanel {
 	 */
 	private JLabel sheetLabel;
 	private JComboBox<Sheet> sheetComboBox;
-	private JTable previewTable; //~~
+	private JTable previewTable; 
 	private JButton selectAllButton;
 	private JButton selectNoneButton;
 	private JScrollPane tableScrollPane;
@@ -166,7 +166,7 @@ public class PreviewTablePanel extends JPanel {
 	
 	private final IconManager iconManager;
 	
-	private EditDialog editDialog; //~~
+	private EditDialog editDialog; 
 	private int lastDialogIndex = -1;
 	private long lastDialogTime;
 	private boolean updating;
