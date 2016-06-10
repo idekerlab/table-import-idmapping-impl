@@ -2,13 +2,11 @@
 A preliminary table-import-impl which allows id mapping
 
 How to use id mapper for table import:
-* go to:
-* path/to/git/table-import-idmapping-impl/table-import-impl
+* go to: path/to/git/table-import-idmapping-impl/table-import-impl
 * % mvn clean install
 * Launch Cytoscape from developer console
-* then, File|Import|Table|File...
-* select a CSV file example with Uniprot identifiers
-* in the preview table, right click on a column header 
+* Then, File|Import|Table|File... and select a CSV file example with Uniprot identifiers
+* In the preview table, right click on a column header 
 * Id Mapping sub-menu should appear below "List Delimiter" button.
   
   
