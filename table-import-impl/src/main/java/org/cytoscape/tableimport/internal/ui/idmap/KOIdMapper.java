@@ -62,7 +62,7 @@ public class KOIdMapper implements IdMapper {
     private static final String IN_TYPE                     = "inType";
     private static final String SPECIES                     = "species";
 
-    public static final boolean DEBUG                       = true;
+    public static final boolean DEBUG                       = false;
 
     private final String        _url;
     private Set<String>         _unmatched_ids;

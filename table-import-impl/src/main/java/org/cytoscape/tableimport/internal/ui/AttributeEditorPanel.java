@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.swing.ButtonGroup;
 import javax.swing.ButtonModel;
@@ -65,7 +66,19 @@ import org.cytoscape.util.swing.LookAndFeelUtil;
 
 
 /*
+ * How to use id mapper for table import:
+ * go to:
+ * path/to/git/table-import-idmapping-impl/table-import-impl
+ * % mvn clean install
+ * Launch Cytoscape from developer console
+ * then, File|Import|Table|File...
+ * select a CSV file example with Uniprot identifiers
+ * in the preview table, right click on a column header 
+ * Id Mapping sub-menu should appear below "List Delimiter" button.
+ * 
+ * 
  * TODO Id mapper need to be packaged better!
+ * TODO Problems with adding column to preview table persists.
  * 
  * Id mapper is here: https://github.com/cytoscape/idmap-impl 
  * 
@@ -76,10 +89,11 @@ import org.cytoscape.util.swing.LookAndFeelUtil;
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapper;
 import org.cytoscape.tableimport.internal.ui.idmap.IdMapping;
 import org.cytoscape.tableimport.internal.ui.idmap.KOIdMapper;
-import org.cytoscape.tableimport.internal.ui.idmap.BridgeDbIdMapper;
 
 @SuppressWarnings("serial")
 public class AttributeEditorPanel extends JPanel {
+	
+	private static final boolean DEBUG = true;
 
 	/*
 	 * private final IdMapper id_mapper = new BridgeDbIdMapper(); 
@@ -89,6 +103,9 @@ public class AttributeEditorPanel extends JPanel {
 
 	private static final String OTHER = "Other:";
 	private static final float ICON_FONT_SIZE = 14.0f;
+
+
+	
 	private JTextField attributeNameTextField;
 	private final Map<SourceColumnSemantic, JToggleButton> typeButtons = new LinkedHashMap<>();
 	private final Map<AttributeDataType, JToggleButton> dataTypeButtons = new LinkedHashMap<>();
@@ -134,8 +151,6 @@ public class AttributeEditorPanel extends JPanel {
 
 	private JTable previewTable;
 
-	
-
 	private int colIdx;
 
 	public AttributeEditorPanel(final Window parent, final String attrName,
@@ -160,105 +175,122 @@ public class AttributeEditorPanel extends JPanel {
 	/**
 	 * This is the principal method for id mapping.
 	 * TODO it still has problems with creating a new preview column!
-	 * 
+	 * FIXME it still has problems with creating a new preview column!
 	 * 
 	 * @param column
 	 * @param id_mapper
 	 */
 	private void mapID(final int column, final IdMapper id_mapper) {
+		
+		/*
+		 * To keep the original values of the preview table.
+		 */
 		if (orig_values_list == null ) {
 			prepareOrginalValiesTable();
 		}
 		
-	
-		if (orig_values_list.get(column).isEmpty()) {
-			//TODO what about list values?
-			for (int row = 0; row < previewTable.getRowCount(); ++row) {
-				String str = (String) previewTable.getValueAt(row, column);
-				orig_values_list.get(column).add(str);
-			}
-		}
-
+		/*
+		 * Getting source and target for id type. 
+		 * Source and target species are the same (for now).
+		 * 
+		 */
 		final String target_type = (String) getIdmapTarget();
 		final String source_type = (String) getIdmapSource();
 		final String species = (String) getIdmapSpecies();
+		
+		/*
+		 * Name for the new column
+		 * TODO should give user ability to make own name, via UI.
+		 */
+		final String new_name = target_type + "->" + source_type;
 
-		Map<String, IdMapping> res = id_mapper.map(
+		/*
+		 * This performs the actual mapping.
+		 * Mapping results are stored in map "res".
+		 */
+        final Map<String, IdMapping> res = id_mapper.map(
 				orig_values_list.get(column), source_type, target_type,
 				species, species);
 
-		for (int row = 0; row < previewTable.getRowCount(); ++row) {
-			System.out.print(row + " :");
-			System.out.println((String) previewTable.getValueAt(row, column));
-		}
+        if (DEBUG) {
+		    for (int row = 0; row < previewTable.getRowCount(); ++row) {
+			    System.out.print(row + " :");
+			    System.out.println((String) previewTable.getValueAt(row, column));
+		    }
+        }
 
+        /*
+         * This parses the id mapping result
+         */
 		if (res != null && !res.isEmpty()) {
-			final int orig_col_count = previewTable.getColumnCount();
-			System.out.println("orig col count " + orig_col_count);
 			final int orig_row_count = previewTable.getRowCount();
-			System.out.println("orig row count " + orig_row_count);
 
-			final String[] new_column = new String[orig_row_count + 0];
+			final String[] new_column = new String[orig_row_count ];
 			for (int row = 0; row < orig_row_count; ++row) {
 				
-				IdMapping r = res.get(previewTable.getValueAt(row, column));
-				if (r != null) {
-					if (r.getTargetIds() != null && !r.getTargetIds().isEmpty()) {
-						new_column[row] = r.getTargetIds().iterator().next();
-						// previewTable.setValueAt(r.first(), row,
-						// orig_col_count);
+				final String source_id = orig_values_list.get(column).get(row);
+				final IdMapping id_mapping = res.get(source_id);
+				if (id_mapping != null) {
+					if (id_mapping.getTargetIds() != null && !id_mapping.getTargetIds().isEmpty()) {
+						final StringBuilder ids_str= new StringBuilder();
+						final Set<String> target_ids = id_mapping.getTargetIds();
+						for (final String target_id : target_ids) {
+							ids_str.append( target_id);
+							ids_str.append( " ");
+						}
+						
+						new_column[row] = ids_str.toString();
+						
 					}
 					else {
-						new_column[row] = "_";
-						// previewTable.setValueAt(
-						// orig_values_list.get(column).get(row), row, column);
+						new_column[row] = "";
 					}
 				}
 				else {
-					new_column[row] = "_";
-				}	
-
+					new_column[row] = "";
+				}
+				if ( DEBUG) {
+                    System.out.println(source_id + "->" + new_column[row]);
+				}
 			}
 
-			// TableColumn c = new TableColumn();
+			
+			/*
+			 * From here, the problems start.
+			 * It does NOT properly add a new table column...
+			 * TODO
+			 * FIXME
+			 */
+			final TableColumn new_tablecolumn = new TableColumn();
 
-			// c.setHeaderValue("a");
-			// System.out.println(previewTable.getModel());
-			PreviewTableModel model = (PreviewTableModel) previewTable
+			new_tablecolumn.setHeaderValue(new_name);
+			previewTable.addColumn(new_tablecolumn);
+			
+			final PreviewTableModel pt_model = (PreviewTableModel) previewTable
 					.getModel();
-
-			// model.setColumnCount(orig_col_count + 1);
-
-			System.out
-					.println("orig model col count " + model.getColumnCount());
-			System.out.println("orig model row count " + model.getRowCount());
-
-			model.addColumn("mapped", new_column);
-
-			TableColumn c = new TableColumn();
-
-			c.setHeaderValue("a");
-
-			previewTable.addColumn(c);
-			// model.addColumn("b", news);
-
-			System.out.println("new model col count " + model.getColumnCount());
-			System.out.println("new model row count " + model.getRowCount());
-
-			// previewTable.addColumn(c);
-			final int new_col_count = previewTable.getColumnCount();
-			System.out.println("new col count " + new_col_count);
-			final int new_row_count = previewTable.getRowCount();
-			System.out.println("new row count " + new_row_count);
-
+			
+		    for (int row = 0; row < new_column.length; ++row) {
+                pt_model.setValueAt(new_column[row], row, 1);
+            	// col 1 is just used as test!
+            }
 		}
 
 	}
 
-	private void prepareOrginalValiesTable() {
+	/**
+	 * To keep the original values of the preview table.
+	 * 
+	 */
+	private final void prepareOrginalValiesTable() {
 		orig_values_list = new ArrayList<ArrayList<String>>();
 		for (int col = 0; col < previewTable.getColumnCount(); ++col) {
-		    orig_values_list.add( new ArrayList<String>());
+			final ArrayList<String> n = new ArrayList<String>();
+		    orig_values_list.add( n);
+		    for (int row = 0; row < previewTable.getRowCount(); ++row) {
+		    	//TODO what about list values?
+				String v = (String) previewTable.getValueAt(row, col);
+				n.add(v);
+			}
 		}
 	}
 
